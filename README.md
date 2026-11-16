@@ -164,6 +164,11 @@ Multi-Source Advanced RAG Assistant/
 
 *Note: Model files, virtual environments, and other generated or environment-specific files are excluded from version control.*
 
+## Documentation
+
+- [Project Summary](docs/Project_Summary.pdf) — overview of the project, architecture, features, and workflow.
+- [Technical Project Documentation](docs/Technical_Project_Documentation.pdf) — detailed implementation, retrieval pipeline, APIs, testing, deployment, and troubleshooting.
+
 ## Getting Started
 
 ### Prerequisites
