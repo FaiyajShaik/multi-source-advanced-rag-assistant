@@ -1,0 +1,14 @@
+fastapi[standard]
+langchain
+langchain-text-splitters
+qdrant-client
+sentence-transformers
+rank-bm25
+openai
+python-dotenv
+pypdf
+python-docx
+python-multipart
+beautifulsoup4
+httpx
+aiohttp

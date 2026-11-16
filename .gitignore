@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+backend/.venv/
+
+# Environment variables
+.env
+backend/.env
+
+# Node
+node_modules/
+
+# Frontend production build
+frontend/dist/
+
+# Qdrant local data
+qdrant_storage/
+
+# OS files
+.DS_Store
+
+# IDE
+.vscode/
