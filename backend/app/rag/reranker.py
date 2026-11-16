@@ -1,9 +1,15 @@
+from pathlib import Path
+
 from sentence_transformers import CrossEncoder
 
 
+BACKEND_DIR = Path(__file__).resolve().parents[2]
 MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+MODEL_PATH = BACKEND_DIR / "models" / "reranker"
 
-reranker = CrossEncoder(MODEL_NAME)
+model_source = str(MODEL_PATH) if MODEL_PATH.exists() else MODEL_NAME
+
+reranker = CrossEncoder(model_source)
 
 
 def rerank_documents(

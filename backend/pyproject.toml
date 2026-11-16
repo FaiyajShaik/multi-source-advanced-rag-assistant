@@ -1,2 +1,4 @@
 [tool.fastapi]
 entrypoint = "app.main:app"
+[tool.vercel.scripts]
+build = "python scripts/download_models.py"

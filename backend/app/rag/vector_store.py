@@ -1,7 +1,9 @@
 
 import hashlib
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -13,12 +15,34 @@ from qdrant_client.models import (
 )
 
 
-client = QdrantClient(path="qdrant_storage")
+# Load environment variables from the backend/.env file.
+BACKEND_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(BACKEND_ENV_PATH)
+
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
+if not QDRANT_URL or not QDRANT_API_KEY:
+    raise RuntimeError(
+        "QDRANT_URL and QDRANT_API_KEY must be configured in backend/.env."
+    )
+
+
+# Connect to Qdrant Cloud.
+client = QdrantClient(
+    url=QDRANT_URL,
+    api_key=QDRANT_API_KEY,
+    timeout=30,
+)
 
 COLLECTION_NAME = "documents"
 
 
 def create_collection():
+    """
+    Create the documents collection if it does not already exist.
+    Uses 768-dimensional vectors with cosine similarity.
+    """
     if not client.collection_exists(COLLECTION_NAME):
         client.create_collection(
             collection_name=COLLECTION_NAME,
@@ -30,7 +54,13 @@ def create_collection():
 
 
 def recreate_collection():
-    # Do not call this during normal application use.
+    """
+    Delete and recreate the collection.
+
+    WARNING:
+    This permanently deletes all documents and vectors
+    stored in the collection. Do not call during normal use.
+    """
     if client.collection_exists(COLLECTION_NAME):
         client.delete_collection(COLLECTION_NAME)
 
@@ -112,6 +142,11 @@ def search_vectors(
     source_types: list[str] | None = None,
     document_ids: list[str] | None = None,
 ):
+    """
+    Search Qdrant Cloud using dense vector similarity.
+
+    Supports filtering by source type and document IDs.
+    """
     must_conditions = []
 
     if source_types:
@@ -177,6 +212,10 @@ def search_vectors(
 
 
 def _scroll_all_points(source_type: str | None = None):
+    """
+    Retrieve all points from the documents collection,
+    optionally filtering by source type.
+    """
     if not client.collection_exists(COLLECTION_NAME):
         return []
 
@@ -216,6 +255,9 @@ def _scroll_all_points(source_type: str | None = None):
 
 
 def get_all_documents():
+    """
+    Return all indexed document chunks.
+    """
     points = _scroll_all_points()
 
     return [
@@ -234,6 +276,9 @@ def get_all_documents():
 
 
 def _group_documents(source_type: str):
+    """
+    Group indexed chunks by their original document.
+    """
     points = _scroll_all_points(source_type=source_type)
     grouped = {}
 
@@ -267,6 +312,9 @@ def _group_documents(source_type: str):
 
 
 def get_uploaded_documents():
+    """
+    Return uploaded documents grouped by document ID.
+    """
     return sorted(
         _group_documents("upload"),
         key=lambda document: document["filename"].lower(),
@@ -274,6 +322,9 @@ def get_uploaded_documents():
 
 
 def get_indexed_websites():
+    """
+    Return indexed websites grouped by document ID.
+    """
     return sorted(
         _group_documents("website"),
         key=lambda website: website["source"].lower(),
@@ -283,7 +334,8 @@ def get_indexed_websites():
 def delete_temporary_documents():
     """
     Delete only temporary uploads and websites.
-    Knowledge Base records are deliberately excluded.
+
+    Permanent Knowledge Base records are deliberately excluded.
     """
     if not client.collection_exists(COLLECTION_NAME):
         return 0
