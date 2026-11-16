@@ -9,6 +9,7 @@ dependencies = [
     "langchain-text-splitters",
     "qdrant-client",
     "sentence-transformers",
+    "torch==2.14.1",
     "huggingface-hub",
     "rank-bm25",
     "openai",
@@ -20,6 +21,14 @@ dependencies = [
     "httpx",
     "aiohttp",
 ]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.fastapi]
 entrypoint = "app.main:app"
