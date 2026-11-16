@@ -52,7 +52,7 @@ app.add_middleware(
 
 
 # Register API routes
-app.include_router(health_router)
+app.include_router(health_router, prefix="/api")
 app.include_router(query_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(website_router, prefix="/api/v1")
