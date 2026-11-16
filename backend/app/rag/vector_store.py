@@ -12,6 +12,7 @@ from qdrant_client.models import (
     FieldCondition,
     MatchAny,
     MatchValue,
+    PayloadSchemaType,
 )
 
 
@@ -40,8 +41,10 @@ COLLECTION_NAME = "documents"
 
 def create_collection():
     """
-    Create the documents collection if it does not already exist.
-    Uses 768-dimensional vectors with cosine similarity.
+    Create the documents collection if it does not exist.
+    Ensure required keyword payload indexes exist.
+
+    Existing collection data is preserved.
     """
     if not client.collection_exists(COLLECTION_NAME):
         client.create_collection(
@@ -52,6 +55,21 @@ def create_collection():
             ),
         )
 
+    # Required for filtering uploads and websites by source_type.
+    client.create_payload_index(
+        collection_name=COLLECTION_NAME,
+        field_name="source_type",
+        field_schema=PayloadSchemaType.KEYWORD,
+        wait=True,
+    )
+
+    # Required for filtering documents by document_id.
+    client.create_payload_index(
+        collection_name=COLLECTION_NAME,
+        field_name="document_id",
+        field_schema=PayloadSchemaType.KEYWORD,
+        wait=True,
+    )
 
 def recreate_collection():
     """

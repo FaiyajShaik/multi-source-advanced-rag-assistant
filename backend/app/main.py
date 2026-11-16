@@ -1,5 +1,6 @@
 
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.query import router as query_router
 from app.api.routes.document import router as documents_router
 from app.api.routes.website import router as website_router
+from app.rag.vector_store import create_collection
 
 
 # Load environment variables from backend/.env
@@ -18,7 +20,14 @@ BACKEND_ENV_PATH = os.path.abspath(
 load_dotenv(BACKEND_ENV_PATH)
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure the Qdrant collection and required payload index exist.
+    create_collection()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 # Local development origins

@@ -1,5 +1,6 @@
 
 import hashlib
+import os
 
 from pathlib import Path
 from uuid import uuid4
@@ -18,7 +19,16 @@ from app.rag.vector_store import (
 
 router = APIRouter()
 
-UPLOAD_DIRECTORY = Path("data/uploads")
+
+# Vercel deployment filesystem is read-only.
+# Use /tmp for temporary upload processing in production.
+# Use the project directory during local development.
+UPLOAD_DIRECTORY = (
+    Path("/tmp/multi_source_rag_uploads")
+    if os.getenv("VERCEL")
+    else Path("data/uploads")
+)
+
 
 ALLOWED_EXTENSIONS = {
     ".txt",
@@ -111,7 +121,13 @@ async def upload_documents(
             detail="Please select at least one document.",
         )
 
-    UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    try:
+        UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to create temporary upload directory: {exc}",
+        ) from exc
 
     successful_uploads = []
     failed_uploads = []
@@ -120,11 +136,14 @@ async def upload_documents(
     request_hashes = set()
 
     for file in files:
+        file_path = None
+
         if not file.filename:
             failed_uploads.append({
                 "filename": "Unknown file",
                 "error": "No filename provided.",
             })
+            await file.close()
             continue
 
         extension = Path(file.filename).suffix.lower()
@@ -167,22 +186,16 @@ async def upload_documents(
             safe_filename = f"{document_id}{extension}"
             file_path = UPLOAD_DIRECTORY / safe_filename
 
-            # Save only after duplicate checks pass.
+            # Save temporarily for document processing.
             file_path.write_bytes(content)
 
-            try:
-                chunks_indexed = process_document(
-                    str(file_path),
-                    document_id=document_id,
-                    source_type="upload",
-                    display_filename=file.filename,
-                    content_hash=content_hash,
-                )
-
-            except Exception:
-                if file_path.exists():
-                    file_path.unlink()
-                raise
+            chunks_indexed = process_document(
+                str(file_path),
+                document_id=document_id,
+                source_type="upload",
+                display_filename=file.filename,
+                content_hash=content_hash,
+            )
 
             successful_uploads.append({
                 "document_id": document_id,
@@ -198,6 +211,14 @@ async def upload_documents(
             })
 
         finally:
+            # Qdrant stores the indexed chunks and metadata.
+            # The original temporary file is no longer needed.
+            if file_path and file_path.exists():
+                try:
+                    file_path.unlink()
+                except OSError:
+                    pass
+
             await file.close()
 
     if not successful_uploads:
@@ -223,6 +244,8 @@ def refresh_temporary_data():
     try:
         uploaded_documents = get_uploaded_documents()
 
+        # Delete temporary uploads and websites from Qdrant.
+        # Permanent Knowledge Base documents are excluded.
         deleted_chunks = delete_temporary_documents()
 
         removed_files = 0
@@ -236,7 +259,10 @@ def refresh_temporary_data():
 
             file_path = Path(source).resolve()
 
-            if file_path.parent == upload_directory and file_path.is_file():
+            if (
+                file_path.parent == upload_directory
+                and file_path.is_file()
+            ):
                 file_path.unlink()
                 removed_files += 1
 
