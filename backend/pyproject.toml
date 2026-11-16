@@ -1,4 +1,28 @@
+
+[project]
+name = "multi-source-advanced-rag-assistant"
+version = "1.0.0"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]",
+    "langchain",
+    "langchain-text-splitters",
+    "qdrant-client",
+    "sentence-transformers",
+    "huggingface-hub",
+    "rank-bm25",
+    "openai",
+    "python-dotenv",
+    "pypdf",
+    "python-docx",
+    "python-multipart",
+    "beautifulsoup4",
+    "httpx",
+    "aiohttp",
+]
+
 [tool.fastapi]
 entrypoint = "app.main:app"
+
 [tool.vercel.scripts]
 build = "python scripts/download_models.py"
